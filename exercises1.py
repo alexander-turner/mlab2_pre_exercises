@@ -36,7 +36,8 @@ def rearrange_2() -> t.Tensor:
     [[1, 2, 3],
      [4, 5, 6]]
     """
-    pass
+    a=t.arange(1,7)
+    return rearrange(a, '(a1 a2) -> a1 a2', a1=2)
 
 
 assert_all_equal(rearrange_2(), t.tensor([[1, 2, 3], [4, 5, 6]]))
