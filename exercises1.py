@@ -1,7 +1,7 @@
 import math
 from einops import rearrange, repeat, reduce
 import torch as t
- 
+
 
 def assert_all_equal(actual: t.Tensor, expected: t.Tensor) -> None:
     assert actual.shape == expected.shape, f"Shape mismatch, got: {actual.shape}"
@@ -22,7 +22,8 @@ def rearrange_1() -> t.Tensor:
      [5, 6],
      [7, 8]]
     """
-    pass
+    a = t.arange(3,9) # [3,4,5,6,7,8]
+    return rearrange(a, '(a1 a2) -> a1 a2 ', a1=3)
 
 
 expected = t.tensor([[3, 4], [5, 6], [7, 8]])
