@@ -64,7 +64,7 @@ def temperatures_average(temps: t.Tensor) -> t.Tensor:
     You can do this with a single call to reduce.
     """
     assert len(temps) % 7 == 0
-    pass
+    return reduce(temps, '(week day) -> week', reduction='mean', day=7)
 
 
 temps = t.Tensor([71, 72, 70, 75, 71, 72, 70, 68, 65, 60, 68, 60, 55, 59, 75, 80, 85, 80, 78, 72, 83])
