@@ -78,7 +78,9 @@ def temperatures_differences(temps: t.Tensor) -> t.Tensor:
     temps: as above
     """
     assert len(temps) % 7 == 0
-    pass
+    avgs = temperatures_average(temps)
+    repeat_avgs = repeat(avgs, 'week -> (week repeat)', repeat=7)
+    return temps - repeat_avgs
 
 
 expected = t.tensor(
