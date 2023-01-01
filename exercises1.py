@@ -119,7 +119,10 @@ def temperatures_normalized(temps: t.Tensor) -> t.Tensor:
 
     Pass torch.std to reduce.
     """
-    pass
+    deviations = temperatures_differences(temps)
+    sd = reduce(deviations, '(week day) -> week', reduction=t.std, day=7)
+    sd_repeated = repeat(sd, 'week -> (week day)', day=7)
+    return deviations / sd_repeated
 
 
 expected = t.tensor(
