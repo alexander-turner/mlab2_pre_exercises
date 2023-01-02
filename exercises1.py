@@ -342,8 +342,9 @@ def batched_logsumexp(matrix: t.Tensor) -> t.Tensor:
     - https://leimao.github.io/blog/LogSumExp/
     - https://gregorygundersen.com/blog/2020/02/09/log-sum-exp/
     """
-    max_elts = matrix.max(dim=1)
-    return max_elts + (matrix-max_elts).exp(dim=1).sum(dim=1).log()
+    max_elts = matrix.amax(dim=1) # (b,)
+    matrix = rearrange(matrix, 'b n -> n b')
+    return max_elts + (matrix-max_elts).exp().sum(dim=0).log() # TODO review how this worked
 
 
 matrix = t.tensor([[-1000, -1000, -1000, -1000], [1000, 1000, 1000, 1000]])
@@ -366,10 +367,9 @@ def batched_softmax(matrix: t.Tensor) -> t.Tensor:
 
     Return: (batch, n). For each i, out[i] should sum to 1.
     """
-    def softmax(vec : t.Tensor):
-        total = t.exp(sum(vec))
-        return t.exp(vec) / total
-    return reduce(matrix, 'batch row -> batch ()', reduction=softmax)  # TODO unsure this is right transform
+    log_totals = batched_logsumexp(matrix)
+    probs = (matrix.transpose(0,1) - log_totals).exp()
+    return probs.transpose(0,1)
 
 
 matrix = t.arange(1, 6).view((1, 5)).float().log()

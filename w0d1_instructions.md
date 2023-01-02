@@ -95,8 +95,60 @@ def rearrange_3() -> t.Tensor:
 
 
 assert_all_equal(rearrange_3(), t.tensor([[[1], [2], [3], [4], [5], [6]]]))
+```
+
+## Creating Tensors: Tensor vs tensor
+
+Two ways to create objects of type `t.Tensor` are:
+
+1) Call the constructor of `t.Tensor`
+2) Use the creation function `t.tensor`
+
+The constructor way is fraught with peril. What should the following cell print?
 
 
+```python
+x = t.arange(5)
+y = t.Tensor(x.shape)
+y2 = t.Tensor(tuple(x.shape))
+y3 = t.Tensor(list(x.shape))
+print(y, y2, y3)
+
+```
+
+What should this cell print?
+
+
+```python
+x = t.Tensor([False, True])
+print(x.dtype)
+
+```
+
+Because the first argument can either be interpreted input data OR the shape, and because the constructor silently coerces your input data to the default floating point type, using the constructor is a recipe for bugs. I recommend never calling the constructor, and only using `t.Tensor` for type signatures.
+
+In contrast, `t.tensor` with no dtype specified will try to detect the type of your input automatically. This is usually what you want, but not always. What does the following code do?
+
+
+```python
+try:
+    print(t.tensor([1, 2, 3, 4]).mean())
+except Exception as e:
+    print("Exception raised: ", e)
+
+```
+
+NumPy's `np.mean` would coerce to float and return 2.5 here, but PyTorch detects that your inputs all happen to be integers and refuses to compute the mean because it's ambiguous if you wanted 2.5 or 10 // 4 = 2 instead.
+
+The best practice to avoid surprises and ambiguity is to use `t.tensor` and pass the dtype explicitly.
+
+Other good ways to create tensors are:
+
+- If you already have a tensor `input` and want a new one of the same size, use functions like [`t.zeros_like(input)`](https://pytorch.org/docs/stable/generated/torch.zeros_like.html). This uses the dtype and device of the input by default, saving you from manually specifying it.
+- If you already have a tensor `input` and want a new one with the same dtype and device but new data, use the [`input.new_tensor`](https://pytorch.org/docs/stable/generated/torch.Tensor.new_tensor.html#torch.Tensor.new_tensor) method.
+- Many [other creation functions](https://pytorch.org/docs/stable/torch.html#creation-ops) exist, for which you should also specify the dtype explicitly.
+
+```
 def temperatures_average(temps: t.Tensor) -> t.Tensor:
     """Return the average temperature for each week.
 
