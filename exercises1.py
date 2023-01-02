@@ -212,12 +212,13 @@ def sample_distribution(probs: t.Tensor, n: int) -> t.Tensor:
     """
     assert abs(probs.sum() - 1.0) < 0.001
     assert (probs >= 0).all()
-    draws = t.rand(n)
-    cdf = t.cumsum(probs, dim=0)
-    # Find first element with probability exceeding draw i, for all draws i
-    # elts = map(lambda draw: next(cdpt[0] for cdpt in enumerate(cdf) if cdpt[1]>=draw), draws)
-    # Return these elements TODO finish
-    return elts
+    draws = t.rand(n) # (n,)
+    cdf = t.cumsum(probs, dim=0) # shape (k,)
+    cdf = repeat(cdf, 'entry -> entry n', n=n) # (k,n)
+
+    # Find where cdf elements are greater than random draws
+    gt = draws > cdf  # (k, n)
+    return gt.sum(dim=0)
 
 
 n = 10000000
@@ -236,7 +237,7 @@ def classifier_accuracy(scores: t.Tensor, true_classes: t.Tensor) -> t.Tensor:
     """
     assert true_classes.max() < scores.shape[1] # Check that there's not going to be an indexing error
     scoreMax = t.argmax(scores, dim=1)
-    agreement = t.where(scoreMax == true_classes, 1, 0)
+    agreement = t.where(scoreMax == true_classes, 1.0, 0.0)
     return t.mean(agreement)
 
 
@@ -296,8 +297,8 @@ assert_all_equal(gather_2d(matrix, indexes), expected)
 def total_price_gather(prices: t.Tensor, items: t.Tensor) -> float:
     """Compute the same as total_price_indexing, but use torch.gather."""
     assert items.max() < prices.shape[0]
-    pass
-
+    item_prices = prices.gather(0, items)
+    return sum(item_prices)
 
 prices = t.tensor([0.5, 1, 1.5, 2, 2.5])
 items = t.tensor([0, 0, 1, 1, 4, 3, 2])
@@ -312,11 +313,11 @@ def integer_array_indexing(matrix: t.Tensor, coords: t.Tensor) -> t.Tensor:
 
     matrix: shape (d_0, d_1, ..., d_n)
     coords: shape (batch, n)
-
+    
     Return: (batch, )
     """
-    pass
-
+    coords_t = rearrange(coords, 'b n -> n b')
+    return matrix[tuple(coords_t)]
 
 mat_2d = t.arange(15).view(3, 5)
 coords_2d = t.tensor([[0, 1], [0, 4], [1, 4]])
@@ -341,7 +342,8 @@ def batched_logsumexp(matrix: t.Tensor) -> t.Tensor:
     - https://leimao.github.io/blog/LogSumExp/
     - https://gregorygundersen.com/blog/2020/02/09/log-sum-exp/
     """
-    pass
+    max_elts = matrix.max(dim=1)
+    return max_elts + (matrix-max_elts).exp(dim=1).sum(dim=1).log()
 
 
 matrix = t.tensor([[-1000, -1000, -1000, -1000], [1000, 1000, 1000, 1000]])
@@ -364,7 +366,10 @@ def batched_softmax(matrix: t.Tensor) -> t.Tensor:
 
     Return: (batch, n). For each i, out[i] should sum to 1.
     """
-    pass
+    def softmax(vec : t.Tensor):
+        total = t.exp(sum(vec))
+        return t.exp(vec) / total
+    return reduce(matrix, 'batch row -> batch ()', reduction=softmax)  # TODO unsure this is right transform
 
 
 matrix = t.arange(1, 6).view((1, 5)).float().log()
@@ -459,3 +464,78 @@ column_indexes = t.tensor([0, 2, 1, 0])
 actual = collect_columns(matrix, column_indexes)
 expected = t.tensor([[0, 2, 1, 0], [3, 5, 4, 3], [6, 8, 7, 6], [9, 11, 10, 9], [12, 14, 13, 12]])
 assert_all_equal(actual, expected)
+
+## STRIDE
+
+from collections import namedtuple
+
+TestCase = namedtuple("TestCase", ["output", "size", "stride"])
+test_input_a = t.tensor([[0, 1, 2, 3, 4], [5, 6, 7, 8, 9], [10, 11, 12, 13, 14], [15, 16, 17, 18, 19]])
+test_cases = [
+    TestCase(output=t.tensor([0, 1, 2, 3]), size=(1,), stride=(1,)),
+    TestCase(output=t.tensor([[0, 1, 2], [5, 6, 7]]), size=(1,), stride=(1,)),
+    TestCase(output=t.tensor([[0, 0, 0], [11, 11, 11]]), size=(1,), stride=(1,)),
+    TestCase(output=t.tensor([0, 6, 12, 18]), size=(1,), stride=(1,)),
+    TestCase(output=t.tensor([[[0, 1, 2]], [[9, 10, 11]]]), size=(1,), stride=(1,)),
+    TestCase(
+        output=t.tensor([[[[0, 1], [2, 3]], [[4, 5], [6, 7]]], [[[12, 13], [14, 15]], [[16, 17], [18, 19]]]]),
+        size=(1,),
+        stride=(1,),
+    ),
+]
+for (i, case) in enumerate(test_cases):
+    actual = test_input_a.as_strided(size=case.size, stride=case.stride)
+    if (case.output != actual).any():
+        print(f"Test {i} failed:")
+        print(f"Expected: {case.output}")
+        print(f"Actual: {actual}")
+    else:
+        print(f"Test {i} passed!")
+
+## RELU 
+def test_relu(relu_func):
+    print(f"Testing: {relu_func.__name__}")
+    x = t.arange(-1, 3, dtype=t.float32, requires_grad=True)
+    out = relu_func(x)
+    expected = t.tensor([0.0, 0.0, 1.0, 2.0])
+    assert_all_close(out, expected)
+
+
+def relu_clone_setitem(x: t.Tensor) -> t.Tensor:
+    """Make a copy with torch.clone and then assign to parts of the copy."""
+    pass
+
+
+test_relu(relu_clone_setitem)
+
+
+def relu_where(x: t.Tensor) -> t.Tensor:
+    """Use torch.where."""
+    pass
+
+
+test_relu(relu_where)
+
+
+def relu_maximum(x: t.Tensor) -> t.Tensor:
+    """Use torch.maximum."""
+    pass
+
+
+test_relu(relu_maximum)
+
+
+def relu_abs(x: t.Tensor) -> t.Tensor:
+    """Use torch.abs."""
+    pass
+
+
+test_relu(relu_abs)
+
+
+def relu_multiply_bool(x: t.Tensor) -> t.Tensor:
+    """Create a boolean tensor and multiply the input by it elementwise."""
+    pass
+
+
+test_relu(relu_multiply_bool)
