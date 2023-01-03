@@ -479,14 +479,17 @@ TestCase = namedtuple("TestCase", ["output", "size", "stride"])
 test_input_a = t.tensor([[0, 1, 2, 3, 4], [5, 6, 7, 8, 9], [10, 11, 12, 13, 14], [15, 16, 17, 18, 19]])
 test_cases = [ 
     TestCase(output=t.tensor([0, 1, 2, 3]), size=(4,), stride=(1,)),
-    TestCase(output=t.tensor([[0, 1, 2], [5, 6, 7]]), size=(2,3), stride=(3,1)),
-    TestCase(output=t.tensor([[0, 0, 0], [11, 11, 11]]), size=(1,), stride=(1,)),
-    TestCase(output=t.tensor([0, 6, 12, 18]), size=(1,), stride=(1,)),
-    TestCase(output=t.tensor([[[0, 1, 2]], [[9, 10, 11]]]), size=(1,), stride=(1,)),
+    TestCase(output=t.tensor([[0, 1, 2], [5, 6, 7]]), size=(2,3), stride=(5,1)),
+    TestCase(output=t.tensor([[0, 0, 0], [11, 11, 11]]), size=(2,3), stride=(11,0)),
+    TestCase(output=t.tensor([0, 6, 12, 18]), size=(4,), stride=(6,)),
+    TestCase(output=t.tensor([
+        [[0, 1, 2]], 
+        [[9, 10, 11]]
+        ]), size=(2,1,3), stride=(9,0,1)),
     TestCase(
         output=t.tensor([[[[0, 1], [2, 3]], [[4, 5], [6, 7]]], [[[12, 13], [14, 15]], [[16, 17], [18, 19]]]]),
-        size=(1,),
-        stride=(1,),
+        size=(2,2,2,2,),
+        stride=(12,4,2,1,),
     ),
 ]
 for (i, case) in enumerate(test_cases):
