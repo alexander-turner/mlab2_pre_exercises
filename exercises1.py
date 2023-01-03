@@ -343,7 +343,7 @@ def batched_logsumexp(matrix: t.Tensor) -> t.Tensor:
     - https://gregorygundersen.com/blog/2020/02/09/log-sum-exp/
     """
     max_elts = matrix.amax(dim=1) # (b,)
-    matrix = rearrange(matrix, 'b n -> n b')
+    matrix = rearrange(matrix, 'b n -> n b') # (n,b)
     return max_elts + (matrix-max_elts).exp().sum(dim=0).log() # TODO review how this worked
 
 
@@ -396,7 +396,10 @@ def batched_logsoftmax(matrix: t.Tensor) -> t.Tensor:
     Do this without using PyTorch's logsoftmax function.
     For each row, subtract the maximum first to avoid overflow if the row contains large values.
     """
-    pass
+    # log(e^z/sum(e^zi)) = z - log(sum(e^zi))
+    denom = batched_logsumexp(matrix)
+    denom = repeat(denom, 'b -> b n', n=matrix.shape[1])
+    return matrix - denom
 
 
 matrix = t.arange(1, 6).view((1, 5)).float()
@@ -418,7 +421,10 @@ def batched_cross_entropy_loss(logits: t.Tensor, true_labels: t.Tensor) -> t.Ten
     Hint: convert the logits to log-probabilities using your batched_logsoftmax from above.
     Then the loss for an example is just the negative of the log-probability that the model assigned to the true class. Use torch.gather to perform the indexing.
     """
-    pass
+    log_probs = batched_logsoftmax(logits) # (b, classes)
+    true_labels = repeat(true_labels, 'batch -> batch classes', classes=logits.shape[1]) # (b,classes)
+    losses = -1 * t.gather(log_probs, dim=1, index=true_labels) # (b, classes)
+    return losses[:,0] # (b,)
 
 
 logits = t.tensor([[float("-inf"), float("-inf"), 0], [1 / 3, 1 / 3, 1 / 3], [float("-inf"), 0, 0]])
@@ -437,7 +443,7 @@ def collect_rows(matrix: t.Tensor, row_indexes: t.Tensor) -> t.Tensor:
     Return: shape (k, n). out[i] is matrix[row_indexes[i]].
     """
     assert row_indexes.max() < matrix.shape[0]
-    pass
+    return matrix[row_indexes]
 
 
 matrix = t.arange(15).view((5, 3))
@@ -456,7 +462,7 @@ def collect_columns(matrix: t.Tensor, column_indexes: t.Tensor) -> t.Tensor:
     Return: shape (m, k). out[:, i] is matrix[:, column_indexes[i]].
     """
     assert column_indexes.max() < matrix.shape[1]
-    pass
+    return matrix[:,column_indexes]
 
 
 matrix = t.arange(15).view((5, 3))
@@ -503,7 +509,9 @@ def test_relu(relu_func):
 
 def relu_clone_setitem(x: t.Tensor) -> t.Tensor:
     """Make a copy with torch.clone and then assign to parts of the copy."""
-    pass
+    x_c = x.clone()
+    x_c[x_c<0] = 0
+    return x_c
 
 
 test_relu(relu_clone_setitem)
@@ -511,7 +519,7 @@ test_relu(relu_clone_setitem)
 
 def relu_where(x: t.Tensor) -> t.Tensor:
     """Use torch.where."""
-    pass
+    return t.where(x>0, x, 0)
 
 
 test_relu(relu_where)
@@ -519,7 +527,7 @@ test_relu(relu_where)
 
 def relu_maximum(x: t.Tensor) -> t.Tensor:
     """Use torch.maximum."""
-    pass
+    return t.maximum(x, t.zeros_like(x))
 
 
 test_relu(relu_maximum)
@@ -527,7 +535,10 @@ test_relu(relu_maximum)
 
 def relu_abs(x: t.Tensor) -> t.Tensor:
     """Use torch.abs."""
-    pass
+    res = (x + t.abs(x))/2
+    return res
+    #x[t.abs(x) != x] = 0
+
 
 
 test_relu(relu_abs)
@@ -535,7 +546,7 @@ test_relu(relu_abs)
 
 def relu_multiply_bool(x: t.Tensor) -> t.Tensor:
     """Create a boolean tensor and multiply the input by it elementwise."""
-    pass
+    return x * (x > 0)
 
 
 test_relu(relu_multiply_bool)
