@@ -49,7 +49,7 @@ def rearrange_3() -> t.Tensor:
     [[[1], [2], [3], [4], [5], [6]]]
     """
     a = t.arange(1,7)
-    return rearrange(a, '(a1 a2) -> 1 a2 a1', a1=1) # TODO unsure why this works
+    return rearrange(a, 'x -> 1 x 1') 
 
 
 assert_all_equal(rearrange_3(), t.tensor([[[1], [2], [3], [4], [5], [6]]]))
@@ -185,13 +185,28 @@ def identity_matrix(n: int) -> t.Tensor:
     Don't use torch.eye or similar.
 
     Hint: you can do it with arange, rearrange, and ==.
-    Bonus: find a different way to do it. TODO complete bonus
+    Bonus: find a different way to do it. 
     """
     assert n >= 0
     if n == 0: return t.zeros((0,0))
     a = t.arange(0, n*n)
     a = rearrange(a, '(row col) -> row col', row=n)
     a = t.where((a % (n+1)) == 0, 1, 0)  
+    return a
+
+def identity_matrix_bonus(n: int) -> t.Tensor:
+    """Return the identity matrix of size nxn.
+
+    Don't use torch.eye or similar.
+
+    Hint: you can do it with arange, rearrange, and ==.
+    Bonus: find a different way to do it. 
+    """
+    assert n >= 0
+    if n == 0: return t.zeros((0,0))
+    diag_ind = t.arange(0,n) * (n+1)
+    a = t.zeros((n,n))
+    a.flatten()[diag_ind] = 1
     return a
 
 assert_all_equal(identity_matrix(3), t.Tensor([[1, 0, 0], [0, 1, 0], [0, 0, 1]]))
@@ -477,7 +492,7 @@ from collections import namedtuple
 
 TestCase = namedtuple("TestCase", ["output", "size", "stride"])
 test_input_a = t.tensor([[0, 1, 2, 3, 4], [5, 6, 7, 8, 9], [10, 11, 12, 13, 14], [15, 16, 17, 18, 19]])
-test_cases = [ 
+test_cases = [ # TODO add to anki?
     TestCase(output=t.tensor([0, 1, 2, 3]), size=(4,), stride=(1,)),
     TestCase(output=t.tensor([[0, 1, 2], [5, 6, 7]]), size=(2,3), stride=(5,1)),
     TestCase(output=t.tensor([[0, 0, 0], [11, 11, 11]]), size=(2,3), stride=(11,0)),
